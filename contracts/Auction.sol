@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
+import "hardhat/console.sol";
 
 contract Auction {
     address internal judgeAddress;
@@ -10,6 +11,7 @@ contract Auction {
 
     // TODO: place your code here
     mapping(address => uint256) internal balances; // Balances to track funds
+    bool internal done = false; // Flag to track if auction has ended
 
     // constructor
     constructor(
@@ -59,6 +61,8 @@ contract Auction {
 
         balances[sellerAddress] += winningPrice;
         balances[winnerAddress] -= winningPrice;
+        // finalizes the auction
+        done = true;
     }
 
     // This can ONLY be called by seller or the judge (if a judge exists).
@@ -69,14 +73,13 @@ contract Auction {
             this.auctionEnded(),
             "Contract value is not equal to winning price."
         );
-        require(
-            msg.sender == sellerAddress ||
-                (judgeAddress != address(0) && msg.sender == judgeAddress),
-            "Unauthorized caller."
-        );
-
-        // Refund the winning bid to the winner
-        balances[winnerAddress] += winningPrice;
+        // if judge exists, then only judge or seller can call
+        if (judgeAddress != address(0)) {
+            require((msg.sender == judgeAddress), "Unauthorized caller.");
+        } else {
+            require(msg.sender == sellerAddress, "Unauthorized caller.");
+        }
+        done = true;
     }
 
     // Withdraw funds from the contract.
@@ -85,11 +88,11 @@ contract Auction {
     // Ensure that your withdrawal functionality is not vulnerable to
     // re-entrancy or unchecked-spend vulnerabilities.
     function withdraw() public {
-        uint256 amount = balances[msg.sender];
-        require(amount > 0, "No funds to withdraw.");
-
-        balances[msg.sender] = 0; // Prevent re-entrancy
-        payable(msg.sender).transfer(amount);
+        if (done) {
+            uint256 amount = balances[msg.sender];
+            balances[msg.sender] = 0; // Prevent re-entrancy
+            payable(msg.sender).transfer(amount);
+        }
     }
 
     // check if the auction has ended
