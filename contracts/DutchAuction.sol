@@ -47,9 +47,18 @@ contract DutchAuction is Auction {
     }
 
     function bid() public payable {
-        // TODO: place your code here
-        // require time() < biddingPeriod, "Bidding period has ended.";
-        require(time() <= startBlock + biddingPeriod, "Auction has ended");
-        require(msg.value >= getCurrentPrice(), "Bid is too low");
+        require(!done, "Auction has ended");
+        require(time() < startBlock + biddingPeriod, "Auction has ended");
+        uint256 currentPrice = getCurrentPrice();
+        require(msg.value >= currentPrice, "Bid is too low");
+
+        console.log("Current price: %s", currentPrice);
+
+        winnerAddress = msg.sender;
+        winningPrice = currentPrice;
+
+        uint256 excessAmount = msg.value - currentPrice;
+        balances[winnerAddress] += excessAmount;
+        done = true;
     }
 }
